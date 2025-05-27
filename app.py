@@ -1,36 +1,35 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
 from joblib import load
 import re
-from typing import List
 
 app = FastAPI()
 
-# Load the pre-trained spam classifier model
-clf = load('spam_classifier.joblib')
+# Load the pre-trained model (assumed to be a Pipeline with vectorizer + classifier)
+clf: Pipeline = load('spam_classifier.joblib')
 
-# Input schema
+# Request model
 class EmailInput(BaseModel):
     text: str
 
-# Utility: Split text into sentences
-def split_into_sentences(text: str) -> List[str]:
-    # Basic sentence splitting (can be improved)
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [s.strip() for s in sentences if s.strip()]
+# Utility to split text into sentences
+def split_into_sentences(text: str):
+    return re.split(r'(?<=[.!?])\s+', text.strip())
 
-@app.post("/predict", tags=["Spam Detection"])
-async def predict_spam(input_text: EmailInput):
-    sentences = split_into_sentences(input_text.text)
+@app.post("/predict")
+async def predict_scam(data: EmailInput):
+    sentences = split_into_sentences(data.text)
+
+    # Remove any empty strings
+    sentences = [s for s in sentences if s.strip()]
 
     if not sentences:
-        raise HTTPException(status_code=400, detail="No valid sentences found.")
+        return {"scam_detected": 0}
 
     predictions = clf.predict(sentences)
 
-    # Filter and return only spammy sentences
-    spam_sentences = [sentence for sentence, pred in zip(sentences, predictions) if pred == 1]
+    # If any sentence is predicted as scam (1), we return 1
+    scam_detected = 1 if 1 in predictions else 0
 
-    return {"spam_sentences": spam_sentences}
+    return {"scam_detected": scam_detected}
