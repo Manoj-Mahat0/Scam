@@ -1,10 +1,18 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from sklearn.pipeline import Pipeline
+from fastapi.middleware.cors import CORSMiddleware
 from joblib import load
 import re
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development use only. Replace with specific origin in production.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load the pre-trained model (assumed to be a Pipeline with vectorizer + classifier)
 clf: Pipeline = load('spam_classifier.joblib')
